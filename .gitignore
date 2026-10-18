@@ -1,0 +1,4 @@
+.run/
+web/bin/
+src/HelloApi/bin/
+src/HelloApi/obj/

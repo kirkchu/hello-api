@@ -1,0 +1,58 @@
+name: Build, test, and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build API and smoke-test /hello
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet publish src/HelloApi/HelloApi.csproj --configuration Release --output web/bin
+          ASPNETCORE_URLS=http://127.0.0.1:5080 dotnet web/bin/HelloApi.dll >api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for _ in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:5080/hello >response.json; then
+              break
+            fi
+            sleep 1
+          done
+          python3 -c 'import json; from pathlib import Path; assert json.loads(Path("response.json").read_text()) == {"response": "Hello, World!"}'
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload frontend
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/wwwroot
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

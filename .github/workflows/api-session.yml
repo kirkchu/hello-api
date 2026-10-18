@@ -1,0 +1,66 @@
+name: Temporary API session
+
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: How many minutes to keep the API online
+        default: "10"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Start API
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet publish src/HelloApi/HelloApi.csproj --configuration Release --output web/bin
+          CORS_ALLOWED_ORIGINS=https://kirkchu.github.io ASPNETCORE_URLS=http://127.0.0.1:5080 \
+            nohup dotnet web/bin/HelloApi.dll >api.log 2>&1 &
+          for _ in {1..30}; do
+            curl --silent --fail http://127.0.0.1:5080/hello && break
+            sleep 1
+          done
+
+      - name: Start temporary public tunnel
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --fail --location \
+            --output cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x cloudflared
+          nohup ./cloudflared tunnel --no-autoupdate --url http://127.0.0.1:5080 >tunnel.log 2>&1 &
+          for _ in {1..60}; do
+            url="$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' tunnel.log | head -n 1 || true)"
+            [[ -n "$url" ]] && break
+            sleep 1
+          done
+          [[ -n "$url" ]] || { cat tunnel.log; exit 1; }
+          echo "API_URL=$url" >>"$GITHUB_ENV"
+          {
+            echo "### API is online"
+            echo "Open: https://kirkchu.github.io/hello-api/?api=$url"
+          } >>"$GITHUB_STEP_SUMMARY"
+          echo "OPEN THIS URL: https://kirkchu.github.io/hello-api/?api=$url"
+
+      - name: Keep API online
+        shell: bash
+        run: |
+          minutes="${{ inputs.minutes }}"
+          [[ "$minutes" =~ ^[0-9]+$ ]] && (( minutes >= 1 && minutes <= 30 )) || { echo "minutes must be 1-30"; exit 1; }
+          echo "Keeping $API_URL online for $minutes minutes..."
+          sleep "$((minutes * 60))"

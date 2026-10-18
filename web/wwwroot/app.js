@@ -1,12 +1,18 @@
 const button = document.querySelector("#hello-button");
 const result = document.querySelector("#result");
 
+// 僅接受 Cloudflare 臨時通道網址，避免被導向任意網站
+const apiParam = new URLSearchParams(location.search).get("api");
+const apiBase = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(apiParam ?? "")
+  ? apiParam
+  : window.API_BASE_URL;
+
 button.addEventListener("click", async () => {
   button.disabled = true;
   result.textContent = "載入中…";
 
   try {
-    const response = await fetch(`${window.API_BASE_URL}/hello`);
+    const response = await fetch(`${apiBase}/hello`);
     if (!response.ok) {
       throw new Error(`API 回應錯誤：HTTP ${response.status}`);
     }

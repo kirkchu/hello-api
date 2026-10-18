@@ -55,7 +55,7 @@ jobs:
             echo "### API is online"
             echo "Open: https://kirkchu.github.io/hello-api/?api=$url"
           } >>"$GITHUB_STEP_SUMMARY"
-          echo "OPEN THIS URL: https://kirkchu.github.io/hello-api/?api=$url"
+          echo "::notice title=OPEN THIS URL::https://kirkchu.github.io/hello-api/?api=$url"
 
       - name: Keep API online
         shell: bash

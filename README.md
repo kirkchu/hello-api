@@ -43,6 +43,6 @@ gh run watch --exit-status
 gh workflow run api-session.yml --ref main -f minutes=10
 ```
 
-等待約 1 分鐘後，開啟該次執行的 Summary（或 `Start temporary public tunnel` 步驟的日誌），會有形如 `https://kirkchu.github.io/hello-api/?api=https://xxxx.trycloudflare.com` 的網址；開啟後按下按鈕即可。逾時（最長 30 分鐘）後 API 自動關閉，也可用 `gh run cancel <run-id>` 提前結束。
+等待約 1 分鐘後，開啟該次執行頁面，上方 Annotations 或 Summary 會有形如 `https://kirkchu.github.io/hello-api/?api=https://xxxx.trycloudflare.com` 的網址；開啟後按下按鈕即可。逾時（最長 30 分鐘）後 API 自動關閉，也可用 `gh run cancel <run-id>` 提前結束。
 
 GitHub-hosted Actions runner 會在工作流程結束後回收，因此其中啟動的 API 只用於 smoke test，並非永久線上服務。若要讓已部署的 Pages 前端也能連線到 API，請將 API 部署到可長期存取的服務，設定其 `CORS_ALLOWED_ORIGINS` 包含 Pages 網址，並將 `web/wwwroot/config.js` 的 `API_BASE_URL` 設為該 API 的基底網址，再重新部署 Pages。
